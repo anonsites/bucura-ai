@@ -1,4 +1,58 @@
-@import "tailwindcss";
+You want:
+
+* Professional density
+* Good typography hierarchy
+* Emerald buttons
+* Squada One font
+* Light lavender chat background (#e2c9ff)
+* Not “average looking”
+
+Let’s fix this properly.
+
+---
+
+# 🔥 First — The Real Fix for “Screen Is Full”
+
+You must always wrap content in a constrained container:
+
+```tsx
+<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+```
+
+Without this, everything expands to full width → looks huge.
+
+---
+
+# 🎨 Professional Global CSS (globals.css)
+
+This assumes:
+
+* Tailwind CSS installed
+* You’ll import Squada One from Google Fonts in layout.tsx
+
+---
+
+## 🔤 Step 1 — Import Squada One in `layout.tsx`
+
+Add inside `<head>`:
+
+```tsx
+<link
+  href="https://fonts.googleapis.com/css2?family=Squada+One&display=swap"
+  rel="stylesheet"
+/>
+```
+
+---
+
+## 🎨 Step 2 — `app/globals.css`
+
+Here is a professional baseline:
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* =========================
    ROOT DESIGN TOKENS
@@ -28,8 +82,8 @@ html {
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.6;
   text-rendering: optimizeLegibility;
 }
@@ -43,7 +97,7 @@ h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-squada-one), "Squada One", sans-serif;
+  font-family: "Squada One", sans-serif;
   letter-spacing: 0.5px;
   line-height: 1.2;
 }
@@ -60,6 +114,12 @@ h3 {
   font-size: 1.5rem;
 }
 
+/* Paragraph text optimized for readability */
+p {
+  font-size: 0.95rem;
+  color: var(--foreground);
+  line-height: 1.7;
+}
 
 /* Secondary text */
 .text-muted {
@@ -169,3 +229,43 @@ img {
   background: #d1d5db;
   border-radius: 10px;
 }
+```
+
+---
+
+# 💡 Why Your UI Looked “Huge”
+
+You likely:
+
+* Used `w-full` everywhere
+* Didn’t use `max-w-7xl`
+* Didn’t use grid auto-fill
+* Used `text-lg` everywhere
+* Used too much padding
+
+Professional feeds use:
+
+```
+grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+```
+
+This allows:
+
+* 4–8 cards on desktop
+* 2–3 on tablet
+* 1 on mobile
+
+Automatically.
+
+---
+
+# 🧠 Professional Density Rule
+
+Good dashboards:
+
+* 260px–300px card width
+* 14px–16px paragraph text
+* 24px section spacing
+* 16px internal padding
+
+Not giant padding everywhere.
