@@ -3,18 +3,18 @@
 import { useEffect, useState } from "react";
 
 const actions = [
-  "Summarizing.....",
-  "Reading.....",
-  "Thinking.......",
-  "Writing......",
-  "Coding......",
   "Analysing.....",
-  "Calculating......",
-  "Tlanslating.....",
+  "Planning.....",
+  "Reasoning.......",
+  "Organizing......",
+  "Coding......",
+  "Summarizing.....",
+  /*"Calculating......",
+  "Translating.....",
   "Designing.....",
   "Creating.....",
   "Planning.....",
-  "Organizing.....",
+  "Organizing.....",*/
 ];
 
 export default function ActionCard() {
