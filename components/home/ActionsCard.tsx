@@ -7,14 +7,13 @@ const actions = [
   "Planning.....",
   "Reasoning.......",
   "Organizing......",
-  "Coding......",
+  "Designing......",
   "Summarizing.....",
-  /*"Calculating......",
-  "Translating.....",
+  "Calculating......",
+  /*"Translating.....",
   "Designing.....",
   "Creating.....",
-  "Planning.....",
-  "Organizing.....",*/
+  "Optimizing.....",*/
 ];
 
 export default function ActionCard() {
@@ -31,7 +30,7 @@ export default function ActionCard() {
   return (
     <div className="w-full max-w-sm rounded-t-3xl bg-[#a8a38a] p-8 shadow-2xl transition-all">
       <h3 className="mb-6 text-3xl font-bold uppercase tracking-wide text-stone-900">
-        let bucura do it for you
+        let bucura AI do it for you.
       </h3>
       <div className="flex min-h-[320px] flex-col gap-4">
         {actions.map((action, index) => {

@@ -41,10 +41,10 @@ export default function Footer() {
     <footer className="relative z-10 mt-12 border-t border-white/40 bg-white/80 py-24 text-stone-900 backdrop-blur">
       <div className="container mx-auto flex flex-col items-center justify-center gap-6 px-4">
         <nav className="flex flex-wrap items-center justify-center gap-6 text-sm font-medium">
-          <Link href="/privacy" className="hover:text-emerald-700 hover:underline">
+          <Link href="/privacy" className="font-extrabold hover:text-emerald-700 hover:underline">
             Privacy Policy
           </Link>
-          <Link href="/terms" className="hover:text-emerald-700 hover:underline">
+          <Link href="/terms" className="font-extrabold hover:text-emerald-700 hover:underline">
             Terms of Service
           </Link>
           {deferredPrompt && (

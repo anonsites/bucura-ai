@@ -42,23 +42,23 @@ export default function HomePageClient({
               />
             </div>
             <h1 className="text-7xl font-bold tracking-wider md:text-9xl">
-              BUCURA
+              BUCURA AI
             </h1>
             <p className="mt-2 text-lg font-bold text-stone-700 md:text-xl">
-              AI Assistant
+              Assistant for complex tasks.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-4 md:justify-start">
               <button
                 type="button"
                 onClick={() => setIsSignUpOpen(true)}
-                className="btn-primary"
+                className="btn-primary font-bold"
               >
                 Try It
               </button>
               <button
                 type="button"
                 onClick={() => setIsLoginOpen(true)}
-                className="inline-flex h-10 items-center justify-center rounded-full border border-gray-600 bg-transparent px-6 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                className="inline-flex h-10 items-center font-bold justify-center rounded-full border border-gray-600 bg-transparent px-6 text-sm text-stone-900 transition-colors hover:bg-stone-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               >
                 Log In
               </button>
