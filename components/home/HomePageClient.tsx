@@ -20,7 +20,7 @@ export default function HomePageClient({
   const [isLoginOpen, setIsLoginOpen] = useState(initialAuthMode === "login");
 
   return (
-    <main className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#e2c9ff] text-stone-900">
+    <main className="relative flex min-h-screen flex-col overflow-x-hidden bg-white text-stone-900">
       <div className="absolute left-1/2 top-1/2 z-0 h-[640px] w-[320px] -translate-x-1/2 -translate-y-1/2">
         <Image
           src="/images/hero_section.png"

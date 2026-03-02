@@ -38,7 +38,7 @@ export default function Footer() {
   };
 
   return (
-    <footer className="relative z-10 mt-12 border-t border-white/40 bg-white/80 py-24 text-stone-900 backdrop-blur">
+    <footer className="relative z-10 mt-6 border-t border-white/40 bg-[#a8a38a] py-10 text-stone-900 backdrop-blur">
       <div className="container mx-auto flex flex-col items-center justify-center gap-6 px-4">
         <nav className="flex flex-wrap items-center justify-center gap-6 text-sm font-medium">
           <Link href="/privacy" className="font-extrabold hover:text-emerald-700 hover:underline">

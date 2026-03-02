@@ -79,7 +79,7 @@ export default function LoginModal({
       <div className="rounded-3xl border border-white/10 bg-[#1c1c1c] p-8 shadow-2xl">
         <div className="mb-6 text-center">
           <h2 className="text-3xl font-bold text-white">Welcome Back</h2>
-          <p className="text-gray-400">Log in to Bucura AI</p>
+          <p className="text-white">Log in to Bucura AI</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -87,7 +87,7 @@ export default function LoginModal({
             <Input
               type="email"
               placeholder="Email address"
-              className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-white placeholder-gray-500 focus:border-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
+              className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-white placeholder-white font-bold focus:border-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
@@ -97,7 +97,7 @@ export default function LoginModal({
             <Input
               type="password"
               placeholder="Password"
-              className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-white placeholder-gray-500 focus:border-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
+              className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-white placeholder-white font-bold focus:border-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
@@ -117,12 +117,12 @@ export default function LoginModal({
           </Button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-gray-500">
+        <div className="mt-6 text-center text-sm text-white">
           Don&apos;t have an account?{" "}
           <button
             type="button"
             onClick={onSwitchToSignUp}
-            className="text-white hover:underline"
+            className="text-blue-400 hover:underline"
           >
             Sign up
           </button>

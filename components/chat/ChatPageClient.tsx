@@ -465,7 +465,7 @@ export default function ChatPageClient({
             ...item,
             status: "error",
             content:
-              "I could not generate a response right now. Please try again.",
+              "Sorry! something went wrong. Please check your internet connection and try again.",
           };
         }),
       );
@@ -546,9 +546,6 @@ export default function ChatPageClient({
               });
             }}
           />
-          <Text size="sm" className="mt-2 text-center text-stone-500">
-            Attachments (images & pdf) are coming soon....
-          </Text>
         </div>
       </div>
       <Toaster toasts={toasts} onDismiss={dismissToast} />
