@@ -53,7 +53,7 @@ export default function HomePageClient({
                 onClick={() => setIsSignUpOpen(true)}
                 className="btn-primary"
               >
-                Ask bucura
+                Try It
               </button>
               <button
                 type="button"

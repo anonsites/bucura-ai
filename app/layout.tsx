@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Squada_One } from "next/font/google";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${squadaOne.variable} antialiased`}>
         <ServiceWorkerRegister />
         {children}
+        <Analytics />
       </body>
     </html>
   );
