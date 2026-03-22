@@ -44,7 +44,7 @@ export default function Footer() {
           <Link href="/documentation" className="font-extrabold hover:text-emerald-700 hover:underline">
             Documentation
           </Link>
-          <Link href="/policy" className="font-extrabold hover:text-emerald-700 hover:underline">
+          <Link href="/privacy" className="font-extrabold hover:text-emerald-700 hover:underline">
             Privacy Policy
           </Link>
           <Link href="/terms" className="font-extrabold hover:text-emerald-700 hover:underline">
