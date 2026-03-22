@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ChatInput from "@/components/chat/ChatInput";
@@ -11,6 +10,7 @@ import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import { isChatMode, type ChatMode } from "@/types/conversation";
 import type { MessageStatus } from "@/types/message";
+import { useHeader } from "@/components/layout/HeaderContext";
 
 type ChatPageClientProps = {
   initialConversationId: string;
@@ -135,7 +135,7 @@ export default function ChatPageClient({
   const [conversationId, setConversationId] = useState<string | null>(
     isExistingConversation ? initialConversationId : null,
   );
-  const [title, setTitle] = useState("NEW CHAT");
+  const [title, setTitle] = useState("ASK BUCURA");
   const [mode, setMode] = useState<ChatMode>("explanation");
   const [messages, setMessages] = useState<ChatBubbleMessage[]>([]);
   const [isLoading, setIsLoading] = useState(isExistingConversation);
@@ -143,11 +143,16 @@ export default function ChatPageClient({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const { toasts, pushToast, dismissToast } = useToast();
+  const { setTitle: setHeaderTitle } = useHeader();
 
   const canSend = useMemo(
     () => !isInvalidRoute && !isLoading && !isSending,
     [isInvalidRoute, isLoading, isSending],
   );
+
+  useEffect(() => {
+    setHeaderTitle("ASK BUCURA");
+  }, [setHeaderTitle]);
 
   useEffect(() => {
     if (!isExistingConversation) {
@@ -190,7 +195,6 @@ export default function ChatPageClient({
 
         if (fetchedConversation) {
           setConversationId(fetchedConversation.id);
-          setTitle(fetchedConversation.title || "NEW CHAT");
           if (isChatMode(fetchedConversation.mode)) {
             setMode(fetchedConversation.mode);
           }
@@ -330,7 +334,6 @@ export default function ChatPageClient({
           return;
         }
         setConversationId(candidate.id);
-        setTitle(candidate.title || "NEW CHAT");
         if (isChatMode(candidate.mode)) {
           setMode(candidate.mode);
         }
@@ -476,19 +479,8 @@ export default function ChatPageClient({
   };
 
   return (
-    <main className="relative min-h-screen bg-[#f7f7fb]">
-      <div className="sticky top-0 z-10 border-b border-[#e5ece7] bg-[#f7f7fb]/80 px-4 py-3 backdrop-blur-md">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center rounded-full border border-[#d8e5dc] px-3 py-1 text-xs font-semibold tracking-wide uppercase text-stone-700 transition hover:border-emerald-300 hover:text-emerald-700"
-          >
-            Back
-          </Link>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-3xl px-4 py-6 pb-40 space-y-6">
+    <main className="relative flex min-h-[75vh] flex-col bg-[#f7f7fb]">
+      <div className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 space-y-6">
         {isInvalidRoute ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4">
             <Text size="base" className="text-red-700">
@@ -531,8 +523,8 @@ export default function ChatPageClient({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-[#f7f7fb] via-[#f7f7fb] to-transparent pb-6 pt-10">
-        <div className="mx-auto max-w-3xl px-4">
+      <div className="sticky bottom-0 z-20 bg-gradient-to-t from-[#f7f7fb] via-[#f7f7fb] to-transparent pb-6 pt-10">
+        <div className="mx-auto w-full max-w-3xl px-4">
           <ChatInput
             onSubmit={handleSendMessage}
             disabled={!canSend}

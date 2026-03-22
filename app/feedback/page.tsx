@@ -1,13 +1,18 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text } from "@/components/ui/Text";
+import { useHeader } from "@/components/layout/HeaderContext";
 
 const WHATSAPP_NUMBER = "250790454357";
 
 export default function FeedbackPage() {
   const [feedback, setFeedback] = useState("");
+  const { setTitle } = useHeader();
+
+  useEffect(() => {
+    setTitle("Feedback");
+  }, [setTitle]);
 
   const openWhatsApp = () => {
     const trimmed = feedback.trim();
@@ -21,19 +26,10 @@ export default function FeedbackPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f7f7fb] px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-3xl space-y-4">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center rounded-full border border-[#d8e5dc] bg-white px-3 py-1 text-xs font-semibold tracking-wide uppercase text-stone-700 transition hover:border-emerald-300 hover:text-emerald-700"
-        >
-          Back To Dashboard
-        </Link>
-
+    <div className="mx-auto max-w-3xl space-y-4">
         <section className="card border-[#dce8df] bg-white">
-          <h1 className="text-4xl sm:text-5xl">Feedback</h1>
           <Text size="base" className="mt-2 text-stone-700">
-            Share what works, what breaks, and what you want next. Your feedback is very important to us.
+            Tell us what works, what breaks, and what you want next. Your feedback is very important to us.
           </Text>
 
           <div className="mt-5 space-y-3">
@@ -57,7 +53,6 @@ export default function FeedbackPage() {
             </div>
           </div>
         </section>
-      </div>
-    </main>
+    </div>
   );
 }

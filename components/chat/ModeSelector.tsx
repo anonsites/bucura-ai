@@ -12,8 +12,8 @@ type ModeSelectorProps = {
 
 const MODE_LABELS: Record<ChatMode, string> = {
   exam: "Quiz",
-  explanation: "Explanation",
-  summary: "Summary",
+  explanation: "Explain",
+  summary: "Summarize",
 };
 
 export default function ModeSelector({
@@ -33,7 +33,7 @@ export default function ModeSelector({
             className={cn(
               "rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase transition-all",
               value === mode
-                ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm"
+                ? "bg-gradient-to-r from-indigo-500 via-purple-500 text-white shadow-sm"
                 : "text-stone-600 hover:bg-stone-100",
               disabled && "cursor-not-allowed opacity-60",
             )}

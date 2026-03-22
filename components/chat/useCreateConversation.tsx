@@ -23,7 +23,7 @@ export function useCreateConversation() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: options?.title || "NEW CHAT",
+          title: options?.title || "ASK BUCURA",
           mode: options?.mode || "explanation",
         }),
       });

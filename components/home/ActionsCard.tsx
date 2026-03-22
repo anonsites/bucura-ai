@@ -28,7 +28,7 @@ export default function ActionCard() {
   }, []);
 
   return (
-    <div className="w-full max-w-sm rounded-2xl bg-[#a8a38a] p-8 transition-all">
+    <div className="w-full max-w-sm rounded-2xl border border-white/20 bg-gradient-to-br from-white/40 to-white/10 p-8 shadow-2xl backdrop-blur-xl transition-all">
       <h3 className="mb-6 text-3xl font-bold uppercase tracking-wide text-stone-900">
         let bucura AI do it for you.
       </h3>
@@ -44,7 +44,7 @@ export default function ActionCard() {
               <div
                 className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${
                   isDone
-                    ? "border-stone-900 bg-stone-900 text-[#a8a38a]"
+                    ? "border-stone-900 bg-stone-900 text-white"
                     : "border-stone-700"
                 }`}
               >

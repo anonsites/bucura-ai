@@ -11,6 +11,7 @@ import Toaster from "@/components/ui/Toaster";
 import { useToast } from "@/hooks/useToast";
 import type { ChatMode } from "@/types/conversation";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { useHeader } from "@/components/layout/HeaderContext";
 
 type Conversation = {
   id: string;
@@ -45,7 +46,10 @@ function formatDate(value: string | null): string {
 function DashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const showChats = searchParams.get("tab") === "chats";
+  const currentTab = searchParams.get("tab");
+  const showChats = currentTab === "chats";
+  const isHome = !currentTab;
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
@@ -55,6 +59,7 @@ function DashboardPageContent() {
   const [quickMode, setQuickMode] = useState<ChatMode>("explanation");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toasts, pushToast, dismissToast } = useToast();
+  const { setTitle } = useHeader();
 
   const sortedConversations = useMemo(
     () =>
@@ -103,7 +108,7 @@ function DashboardPageContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: "NEW CHAT",
+          title: "ASK BUCURA",
           mode: "explanation",
         }),
       });
@@ -229,6 +234,14 @@ function DashboardPageContent() {
   };
 
   useEffect(() => {
+    if (showChats) {
+      setTitle("Chats");
+    } else {
+      setTitle(null);
+    }
+  }, [showChats, setTitle]);
+
+  useEffect(() => {
     if (!showChats) {
       return;
     }
@@ -249,8 +262,8 @@ function DashboardPageContent() {
   }, []);
 
   return (
-    <main className={showChats ? "space-y-6" : "flex min-h-[72vh] items-center"}>
-      {!showChats ? (
+    <main className={!isHome ? "space-y-6" : "flex min-h-[72vh] items-center"}>
+      {isHome ? (
         <div className="mx-auto w-full max-w-3xl">
           <div className="mb-6 flex justify-center">
             <div className="relative h-20 w-20 overflow-hidden rounded-full border-4 border-white/50 bg-[#8a8ba8] shadow-lg">
@@ -262,7 +275,7 @@ function DashboardPageContent() {
               />
             </div>
           </div>
-          <h1 className="mb-8 text-center text-4xl sm:text-5xl">Ask BUCURA</h1>
+          <h1 className="mb-8 text-center text-4xl sm:text-5xl">ASK BUCURA</h1>
           <section className="card border-[#dce8df] bg-white">
             <div className="space-y-5">
               <div>

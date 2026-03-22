@@ -146,7 +146,7 @@ export default function ChatInput({
       </div>
 
       {showModeSelector ? (
-        <div className="flex items-center justify-center gap-2 sm:justify-start">
+        <div className="flex items-center justify-center gap-2">
           <ModeSelector
             value={activeMode}
             onChange={setActiveMode}

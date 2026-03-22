@@ -86,7 +86,7 @@ export default function LoginModal({
           <div>
             <Input
               type="email"
-              placeholder="Email address"
+              placeholder="Email:"
               className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-white placeholder-white font-bold focus:border-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -96,7 +96,7 @@ export default function LoginModal({
           <div>
             <Input
               type="password"
-              placeholder="Password"
+              placeholder="Password:"
               className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-white placeholder-white font-bold focus:border-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
