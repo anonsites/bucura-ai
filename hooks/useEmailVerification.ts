@@ -50,7 +50,7 @@ export function useEmailVerification(
       remaining -= 1;
       setResendCountdown(remaining);
 
-      if (remaining <= 0) {
+      if (remaining <= 0 && countdownInterval.current) {
         clearInterval(countdownInterval.current);
       }
     }, 1000);
