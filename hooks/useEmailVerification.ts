@@ -36,7 +36,7 @@ export function useEmailVerification(
   const [verified, setVerified] = useState(false);
   const [attemptsLeft, setAttemptsLeft] = useState(5);
   const [resendCountdown, setResendCountdown] = useState(0);
-  const countdownInterval = useRef<NodeJS.Timeout>();
+  const countdownInterval = useRef<NodeJS.Timeout | null>(null);
 
   const startResendCountdown = useCallback((seconds: number = 60) => {
     if (countdownInterval.current) {
