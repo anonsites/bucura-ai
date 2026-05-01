@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SmtpClient } from "https://deno.land/x/denomailer@1.0.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,7 +12,6 @@ interface SendOTPRequest {
   email: string;
 }
 
-// Format email template with OTP
 function getOTPEmailHTML(otp: string, expiresIn: number = 5): string {
   return `
 <!DOCTYPE html>
@@ -39,20 +39,9 @@ function getOTPEmailHTML(otp: string, expiresIn: number = 5): string {
         padding: 40px 20px;
         text-align: center;
       }
-      .header h1 {
-        margin: 0;
-        font-size: 28px;
-      }
-      .content {
-        padding: 40px 20px;
-        text-align: center;
-      }
-      .content p {
-        color: #333;
-        font-size: 16px;
-        line-height: 1.6;
-        margin: 0 0 20px 0;
-      }
+      .header h1 { margin: 0; font-size: 28px; }
+      .content { padding: 40px 20px; text-align: center; }
+      .content p { color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0; }
       .otp-code {
         display: inline-block;
         background-color: #f0f0f0;
@@ -66,11 +55,7 @@ function getOTPEmailHTML(otp: string, expiresIn: number = 5): string {
         margin: 20px 0;
         font-family: 'Courier New', monospace;
       }
-      .expiry {
-        color: #666;
-        font-size: 14px;
-        margin: 20px 0;
-      }
+      .expiry { color: #666; font-size: 14px; margin: 20px 0; }
       .footer {
         background-color: #f9f9f9;
         border-top: 1px solid #eee;
@@ -103,12 +88,12 @@ function getOTPEmailHTML(otp: string, expiresIn: number = 5): string {
           This code will expire in <strong>${expiresIn} minutes</strong>
         </div>
         <div class="warning">
-          <strong>⚠️ Security Notice:</strong> Never share this code with anyone. Bucura AI support will never ask for your verification code.
+          <strong>Security Notice:</strong> Never share this code with anyone. Bucura AI support will never ask for your verification code.
         </div>
         <p style="color: #666; font-size: 14px;">If you didn't request this verification code, please ignore this email.</p>
       </div>
       <div class="footer">
-        <p>© ${new Date().getFullYear()} Bucura AI. All rights reserved.</p>
+        <p>&copy; ${new Date().getFullYear()} Bucura AI. All rights reserved.</p>
         <p>This is an automated email. Please do not reply to this message.</p>
       </div>
     </div>
@@ -117,37 +102,38 @@ function getOTPEmailHTML(otp: string, expiresIn: number = 5): string {
   `;
 }
 
-// Send email via Gmail SMTP
-async function sendEmailViaSMTP(
-  toEmail: string,
-  otp: string
-): Promise<boolean> {
+async function sendEmailViaSMTP(toEmail: string, otp: string, expiresInMinutes: number = 5): Promise<boolean> {
   const gmailUser = Deno.env.get("GMAIL_USER");
   const gmailAppPassword = Deno.env.get("GMAIL_APP_PASSWORD");
 
   if (!gmailUser || !gmailAppPassword) {
-    console.error("Gmail credentials not configured");
+    console.error("Gmail credentials not configured: GMAIL_USER or GMAIL_APP_PASSWORD missing");
     return false;
   }
 
+  const client = new SmtpClient();
+
   try {
-    // Using Deno's native SMTP support via a POST request to a SMTP service
-    // For this implementation, we'll use a simpler approach with a third-party API
-    // Alternatively, you can use the `deno_smtp` module
+    await client.connectTLS({
+      hostname: "smtp.gmail.com",
+      port: 465,
+      username: gmailUser,
+      password: gmailAppPassword,
+    });
 
-    // Option 1: Using SendGrid API (if you want to switch)
-    // Option 2: Using native Node SMTP via a custom implementation
-    // Option 3: Use Resend, Mailgun, or other services
+    await client.send({
+      from: `Bucura AI <${gmailUser}>`,
+      to: toEmail,
+      subject: "Your Bucura AI Verification Code",
+      html: getOTPEmailHTML(otp, expiresInMinutes),
+    });
 
-    // For now, we'll create a placeholder that you can integrate with your preferred service
-    console.log(
-      `Would send email to ${toEmail} with OTP: ${otp} via ${gmailUser}`
-    );
-
-    // Mock successful send for now
+    await client.close();
+    console.log(`OTP email sent successfully to ${toEmail}`);
     return true;
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("SMTP error:", error);
+    try { await client.close(); } catch (_) { /* ignore */ }
     return false;
   }
 }
@@ -162,18 +148,11 @@ serve(async (req) => {
 
     if (!email) {
       return new Response(
-        JSON.stringify({
-          success: false,
-          message: "Email is required",
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ success: false, message: "Email is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Get the latest unverified OTP record for this email
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -183,7 +162,6 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch the OTP record
     const { data: otpRecord, error: fetchError } = await supabase
       .from("email_verification")
       .select("otp_code, expires_at")
@@ -196,40 +174,21 @@ serve(async (req) => {
     if (fetchError || !otpRecord) {
       console.error("Error fetching OTP record:", fetchError);
       return new Response(
-        JSON.stringify({
-          success: false,
-          message: "OTP record not found",
-        }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ success: false, message: "OTP record not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Calculate expiration time
     const expiresAt = new Date(otpRecord.expires_at);
     const now = new Date();
-    const expiresInMinutes = Math.ceil(
-      (expiresAt.getTime() - now.getTime()) / 60000
-    );
+    const expiresInMinutes = Math.ceil((expiresAt.getTime() - now.getTime()) / 60000);
 
-    // Prepare email content
-    const htmlContent = getOTPEmailHTML(otpRecord.otp_code, expiresInMinutes);
-
-    // Send email
-    const emailSent = await sendEmailViaSMTP(email, otpRecord.otp_code);
+    const emailSent = await sendEmailViaSMTP(email, otpRecord.otp_code, expiresInMinutes);
 
     if (!emailSent) {
       return new Response(
-        JSON.stringify({
-          success: false,
-          message: "Failed to send email",
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ success: false, message: "Failed to send email. Check GMAIL_USER and GMAIL_APP_PASSWORD secrets." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -237,15 +196,9 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: "OTP email sent successfully",
-        data: {
-          email,
-          sentAt: new Date().toISOString(),
-        },
+        data: { email, sentAt: new Date().toISOString() },
       }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error in send-otp-email function:", error);
@@ -255,10 +208,7 @@ serve(async (req) => {
         message: "An unexpected error occurred",
         error: error instanceof Error ? error.message : "Unknown error",
       }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
