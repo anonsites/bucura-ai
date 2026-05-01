@@ -204,7 +204,7 @@ export default function SignUpModal({
                     className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-white placeholder-white font-bold focus:border-white/50 focus:outline-none focus:ring-1 focus:ring-white/50 text-center tracking-widest"
                     value={otp}
                     onChange={(e) => setOTP(e.target.value.slice(0, 6))}
-                    maxLength="6"
+                    maxLength={6}
                     inputMode="numeric"
                     disabled={emailLoading}
                     required
