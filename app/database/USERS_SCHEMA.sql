@@ -136,6 +136,23 @@ CREATE TABLE IF NOT EXISTS public.documents (
   CONSTRAINT uq_documents_user_storage_path UNIQUE (user_id, storage_path)
 );
 
+-- EMAIL VERIFICATION TABLE FOR OTP
+CREATE TABLE IF NOT EXISTS public.email_verification (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL,
+  otp_code TEXT NOT NULL CHECK (char_length(otp_code) = 6),
+  otp_hash TEXT NOT NULL,
+  is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+  verified_at TIMESTAMPTZ,
+  resend_count INTEGER NOT NULL DEFAULT 0 CHECK (resend_count >= 0),
+  resend_last_at TIMESTAMPTZ,
+  attempt_count INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0),
+  attempt_last_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ==============================================================
 -- 3) INDEXES
 -- ==============================================================
@@ -175,6 +192,19 @@ CREATE INDEX IF NOT EXISTS idx_documents_user_created
 CREATE INDEX IF NOT EXISTS idx_documents_status_created
   ON public.documents (status, created_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_email_verification_email
+  ON public.email_verification (email);
+
+CREATE INDEX IF NOT EXISTS idx_email_verification_expires_at
+  ON public.email_verification (expires_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_email_verification_created
+  ON public.email_verification (created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_email_verification_unverified_email
+  ON public.email_verification (email)
+  WHERE is_verified = FALSE;
+
 -- ==============================================================
 -- 4) RLS POLICIES
 -- ==============================================================
@@ -185,6 +215,7 @@ ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.usage_tracking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.usage_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.email_verification ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS profiles_select_own ON public.profiles;
 CREATE POLICY profiles_select_own
@@ -345,6 +376,26 @@ CREATE POLICY documents_delete_own
   ON public.documents
   FOR DELETE
   USING (auth.uid() = user_id);
+
+-- EMAIL VERIFICATION POLICIES (ANON CAN INSERT/UPDATE)
+DROP POLICY IF EXISTS email_verification_anon_insert ON public.email_verification;
+CREATE POLICY email_verification_anon_insert
+  ON public.email_verification
+  FOR INSERT
+  WITH CHECK (TRUE);
+
+DROP POLICY IF EXISTS email_verification_anon_select ON public.email_verification;
+CREATE POLICY email_verification_anon_select
+  ON public.email_verification
+  FOR SELECT
+  USING (TRUE);
+
+DROP POLICY IF EXISTS email_verification_anon_update ON public.email_verification;
+CREATE POLICY email_verification_anon_update
+  ON public.email_verification
+  FOR UPDATE
+  USING (TRUE)
+  WITH CHECK (TRUE);
 
 -- ==============================================================
 -- 5) FUNCTIONS
@@ -550,6 +601,268 @@ $$;
 GRANT EXECUTE ON FUNCTION public.track_usage_tokens(UUID, INTEGER, INTEGER) TO authenticated;
 
 -- ==============================================================
+-- EMAIL VERIFICATION FUNCTIONS
+-- ==============================================================
+
+CREATE OR REPLACE FUNCTION public.generate_otp_code()
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  v_otp TEXT;
+BEGIN
+  v_otp := LPAD(
+    FLOOR(RANDOM() * 1000000)::TEXT,
+    6,
+    '0'
+  );
+  RETURN v_otp;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.hash_otp(p_otp TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+BEGIN
+  RETURN encode(
+    digest(p_otp || 'bucura_ai_otp_salt', 'sha256'),
+    'hex'
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.request_email_verification(p_email TEXT)
+RETURNS TABLE (
+  id UUID,
+  expires_at TIMESTAMPTZ,
+  message TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_otp TEXT;
+  v_otp_hash TEXT;
+  v_existing_record RECORD;
+  v_expires_at TIMESTAMPTZ;
+  v_now TIMESTAMPTZ := NOW();
+BEGIN
+  -- Validate email
+  IF p_email IS NULL OR p_email = '' OR p_email !~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$' THEN
+    RAISE EXCEPTION 'INVALID_EMAIL';
+  END IF;
+
+  -- Check if already verified
+  IF EXISTS (
+    SELECT 1 FROM public.email_verification
+    WHERE email = p_email AND is_verified = TRUE
+  ) THEN
+    RAISE EXCEPTION 'EMAIL_ALREADY_VERIFIED';
+  END IF;
+
+  -- Check rate limit (5 requests per hour)
+  IF EXISTS (
+    SELECT 1 FROM public.email_verification
+    WHERE email = p_email
+      AND created_at > v_now - INTERVAL '1 hour'
+      AND resend_count >= 5
+  ) THEN
+    RAISE EXCEPTION 'RATE_LIMIT_EXCEEDED';
+  END IF;
+
+  -- Check cooldown (60 seconds between resends)
+  SELECT * INTO v_existing_record FROM public.email_verification
+  WHERE email = p_email
+    AND is_verified = FALSE
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  IF FOUND THEN
+    IF v_existing_record.resend_last_at > v_now - INTERVAL '60 seconds' THEN
+      RAISE EXCEPTION 'RESEND_COOLDOWN_ACTIVE';
+    END IF;
+    IF v_existing_record.expires_at > v_now THEN
+      RAISE EXCEPTION 'OTP_NOT_EXPIRED';
+    END IF;
+  END IF;
+
+  -- Generate new OTP
+  v_otp := public.generate_otp_code();
+  v_otp_hash := public.hash_otp(v_otp);
+  v_expires_at := v_now + INTERVAL '5 minutes';
+
+  -- Delete old expired records for this email
+  DELETE FROM public.email_verification
+  WHERE email = p_email
+    AND is_verified = FALSE
+    AND expires_at < v_now;
+
+  -- If valid record exists, update it
+  IF FOUND THEN
+    UPDATE public.email_verification
+    SET
+      otp_code = v_otp,
+      otp_hash = v_otp_hash,
+      resend_count = resend_count + 1,
+      resend_last_at = v_now,
+      attempt_count = 0,
+      expires_at = v_expires_at,
+      updated_at = v_now
+    WHERE email = p_email AND is_verified = FALSE
+    RETURNING id, expires_at, 'OTP_RESENT' INTO id, expires_at, message;
+  ELSE
+    -- Insert new OTP record
+    INSERT INTO public.email_verification (
+      email,
+      otp_code,
+      otp_hash,
+      expires_at,
+      created_at,
+      updated_at
+    ) VALUES (
+      p_email,
+      v_otp,
+      v_otp_hash,
+      v_expires_at,
+      v_now,
+      v_now
+    )
+    RETURNING
+      public.email_verification.id,
+      public.email_verification.expires_at,
+      'OTP_CREATED' INTO id, expires_at, message;
+  END IF;
+
+  -- Note: Actual email sending happens via Supabase edge function
+  RETURN NEXT;
+  RETURN;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.verify_email_otp(p_email TEXT, p_otp TEXT)
+RETURNS TABLE (
+  success BOOLEAN,
+  verified_at TIMESTAMPTZ,
+  message TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_now TIMESTAMPTZ := NOW();
+  v_otp_hash TEXT;
+  v_record RECORD;
+BEGIN
+  v_otp_hash := public.hash_otp(p_otp);
+
+  -- Validate inputs
+  IF p_email IS NULL OR p_email = '' THEN
+    RETURN QUERY SELECT FALSE, NULL::TIMESTAMPTZ, 'INVALID_EMAIL'::TEXT;
+    RETURN;
+  END IF;
+
+  IF p_otp IS NULL OR p_otp = '' OR char_length(trim(p_otp)) <> 6 THEN
+    RETURN QUERY SELECT FALSE, NULL::TIMESTAMPTZ, 'INVALID_OTP_FORMAT'::TEXT;
+    RETURN;
+  END IF;
+
+  -- Fetch record
+  SELECT * INTO v_record FROM public.email_verification
+  WHERE email = p_email AND is_verified = FALSE;
+
+  -- Check if record exists
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT FALSE, NULL::TIMESTAMPTZ, 'NO_VERIFICATION_REQUEST'::TEXT;
+    RETURN;
+  END IF;
+
+  -- Check if expired
+  IF v_record.expires_at < v_now THEN
+    RETURN QUERY SELECT FALSE, NULL::TIMESTAMPTZ, 'OTP_EXPIRED'::TEXT;
+    RETURN;
+  END IF;
+
+  -- Check attempt limit (5 attempts)
+  IF v_record.attempt_count >= 5 THEN
+    RETURN QUERY SELECT FALSE, NULL::TIMESTAMPTZ, 'MAX_ATTEMPTS_EXCEEDED'::TEXT;
+    RETURN;
+  END IF;
+
+  -- Verify OTP hash
+  IF v_record.otp_hash <> v_otp_hash THEN
+    UPDATE public.email_verification
+    SET
+      attempt_count = attempt_count + 1,
+      attempt_last_at = v_now,
+      updated_at = v_now
+    WHERE email = p_email AND is_verified = FALSE;
+    
+    RETURN QUERY SELECT FALSE, NULL::TIMESTAMPTZ, 'INVALID_OTP'::TEXT;
+    RETURN;
+  END IF;
+
+  -- Mark as verified
+  UPDATE public.email_verification
+  SET
+    is_verified = TRUE,
+    verified_at = v_now,
+    updated_at = v_now
+  WHERE email = p_email AND is_verified = FALSE
+  RETURNING
+    TRUE,
+    public.email_verification.verified_at,
+    'EMAIL_VERIFIED' INTO success, verified_at, message;
+
+  RETURN NEXT;
+  RETURN;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_email_verified(p_email TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.email_verification
+    WHERE email = p_email AND is_verified = TRUE
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.cleanup_expired_verifications()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_deleted_count INTEGER;
+BEGIN
+  DELETE FROM public.email_verification
+  WHERE is_verified = FALSE
+    AND expires_at < NOW() - INTERVAL '1 day';
+  
+  GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+  RETURN v_deleted_count;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.generate_otp_code() TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.hash_otp(TEXT) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.request_email_verification(TEXT) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.verify_email_otp(TEXT, TEXT) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.is_email_verified(TEXT) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.cleanup_expired_verifications() TO service_role;
+
+-- ==============================================================
 -- 6) TRIGGERS
 -- ==============================================================
 
@@ -580,6 +893,12 @@ EXECUTE FUNCTION public.set_updated_at();
 DROP TRIGGER IF EXISTS trg_documents_set_updated_at ON public.documents;
 CREATE TRIGGER trg_documents_set_updated_at
 BEFORE UPDATE ON public.documents
+FOR EACH ROW
+EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_email_verification_set_updated_at ON public.email_verification;
+CREATE TRIGGER trg_email_verification_set_updated_at
+BEFORE UPDATE ON public.email_verification
 FOR EACH ROW
 EXECUTE FUNCTION public.set_updated_at();
 
