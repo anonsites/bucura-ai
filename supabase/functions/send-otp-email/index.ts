@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SmtpClient } from "https://deno.land/x/denomailer@1.0.1/mod.ts";
+import nodemailer from "npm:nodemailer@6.9.9";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -111,29 +111,26 @@ async function sendEmailViaSMTP(toEmail: string, otp: string, expiresInMinutes: 
     return false;
   }
 
-  const client = new SmtpClient();
-
   try {
-    await client.connectTLS({
-      hostname: "smtp.gmail.com",
-      port: 465,
-      username: gmailUser,
-      password: gmailAppPassword,
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: gmailUser,
+        pass: gmailAppPassword,
+      },
     });
 
-    await client.send({
+    await transporter.sendMail({
       from: `Bucura AI <${gmailUser}>`,
       to: toEmail,
       subject: "Your Bucura AI Verification Code",
       html: getOTPEmailHTML(otp, expiresInMinutes),
     });
 
-    await client.close();
     console.log(`OTP email sent successfully to ${toEmail}`);
     return true;
   } catch (error) {
     console.error("SMTP error:", error);
-    try { await client.close(); } catch (_) { /* ignore */ }
     return false;
   }
 }
