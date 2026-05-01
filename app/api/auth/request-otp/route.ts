@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requestEmailOTP } from '@/lib/emailVerification';
 import type { EmailVerificationRequest, EmailVerificationResponse } from '@/types/emailVerification';
+import dns from 'dns/promises';
+
+async function domainHasMX(domain: string): Promise<boolean> {
+  try {
+    const records = await dns.resolveMx(domain);
+    return records.length > 0;
+  } catch {
+    return false;
+  }
+}
 
 const DISPOSABLE_DOMAINS = new Set([
   'mailinator.com','guerrillamail.com','guerrillamail.net','guerrillamail.org',
@@ -57,6 +67,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<EmailVeri
       );
     }
 
+    // Check domain actually has mail servers
+    const mxExists = await domainHasMX(domain);
+    if (!mxExists) {
+      return NextResponse.json(
+        { success: false, message: 'This email domain does not exist or cannot receive emails. Please use a valid email address.' },
+        { status: 400 }
+      );
+    }
+
     // Request OTP
     const response = await requestEmailOTP(trimmedEmail);
 
@@ -75,6 +94,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<EmailVeri
   }
 }
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
   return NextResponse.json({}, { status: 200 });
 }
