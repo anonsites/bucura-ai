@@ -93,8 +93,6 @@ export function useEmailVerification(
       setOTP('');
       setAttemptsLeft(5);
       startResendCountdown(60);
-
-      options?.onSuccess?.(email);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred';
       setError(`Failed to request OTP: ${message}`);
