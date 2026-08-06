@@ -164,7 +164,7 @@ export default function SettingsPage() {
         </form>
       </section>
 
-      {/* Developer Mode Toggle Section */}
+      {/* Developer Mode Toggle Section 
       <section className="card border-[#dce8df] bg-white">
         <div className="flex items-center justify-between">
           <div>
@@ -198,7 +198,7 @@ export default function SettingsPage() {
             <strong>Note:</strong> You have {projectCount} active project(s). You must delete them before disabling Developer Mode.
           </div>
         )}
-      </section>
+      </section>*/}
     </div>
   );
 }
