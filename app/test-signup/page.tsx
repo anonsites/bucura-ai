@@ -20,7 +20,7 @@ export default function TestSignupPage() {
         <div className="mb-8 rounded-lg border border-gray-700 bg-gray-900/50 p-6">
           <h2 className="text-white font-semibold mb-4">📋 Testing Instructions</h2>
           <ul className="text-sm text-gray-300 space-y-2">
-            <li>✓ Click "Send Verification Code"</li>
+            <li>✓ Click &quot;Send Verification Code&quot;</li>
             <li>✓ Check your email for the 6-digit OTP</li>
             <li>✓ Enter the OTP to verify</li>
             <li>✓ Complete account creation</li>

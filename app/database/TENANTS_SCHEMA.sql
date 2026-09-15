@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS public.chatbot_configs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   website_id UUID NOT NULL UNIQUE REFERENCES public.websites(id) ON DELETE CASCADE,
   system_prompt TEXT DEFAULT 'You are a helpful AI customer support agent.',
-  model TEXT DEFAULT 'llama-3.1-8b-instant',
+  model TEXT DEFAULT 'gemini-2.5-flash',
   temperature FLOAT DEFAULT 0.5,
   max_tokens INTEGER DEFAULT 500,
   welcome_message TEXT DEFAULT 'Hello! How can I help you today?',

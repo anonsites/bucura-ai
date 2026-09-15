@@ -100,7 +100,7 @@ export async function createConversation({
   userId,
   title,
   mode = "explanation",
-  model = process.env.GROQ_MODEL?.trim() || "llama-3.1-8b-instant",
+  model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash",
 }: CreateConversationParams): Promise<Conversation> {
   const { data, error } = await supabase
     .from("conversations")

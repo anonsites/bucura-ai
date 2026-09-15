@@ -2,49 +2,44 @@ import { buildSystemPrompt } from "@/lib/prompts";
 import type { ChatMode } from "@/types/conversation";
 import type { AiHistoryMessage } from "@/types/message";
 
-type GroqMessage = {
-  role: "system" | "user" | "assistant";
-  content: string;
+type GeminiContent = {
+  role: "user" | "model";
+  parts: Array<{ text: string }>;
 };
 
-const LEGACY_MODEL_ALIASES: Record<string, string> = {
-  "llama3-8b-8192": "llama-3.1-8b-instant",
-  "llama3-70b-8192": "llama-3.3-70b-versatile",
-};
-
-type GroqCompletionResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string;
+type GeminiResponse = {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{ text?: string }>;
     };
   }>;
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
   };
-  model?: string;
+  modelVersion?: string;
 };
 
-type GroqStreamChunk = {
-  choices?: Array<{
-    delta?: {
-      content?: string;
-    };
-  }>;
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
+type GeminiStreamChunk = GeminiResponse;
+
+type GeminiRequest = {
+  systemInstruction: { parts: Array<{ text: string }> };
+  contents: GeminiContent[];
+  generationConfig: {
+    maxOutputTokens: number;
+    temperature: number;
   };
-  x_groq?: {
-    usage?: {
-      prompt_tokens?: number;
-      completion_tokens?: number;
-      total_tokens?: number;
-    };
-  };
-  model?: string;
+};
+
+type GeminiMessage = {
+  role: "user" | "model";
+  parts: Array<{ text: string }>;
+};
+
+type GeminiPrompt = {
+  systemInstruction: { parts: Array<{ text: string }> };
+  contents: GeminiMessage[];
 };
 
 export type GenerateAiResponseParams = {
@@ -58,7 +53,7 @@ export type GenerateAiResponseParams = {
 
 export type GenerateAiResponseResult = {
   content: string;
-  provider: "groq";
+  provider: "gemini";
   model: string;
   promptTokens: number;
   completionTokens: number;
@@ -76,36 +71,47 @@ export type StreamAiResponseEvent =
       result: GenerateAiResponseResult;
     };
 
-function requireGroqApiKey(): string {
-  const key = process.env.GROQ_API_KEY;
+function requireGeminiApiKey(): string {
+  const key = process.env.GEMINI_API_KEY;
   if (!key) {
-    throw new Error("Missing required environment variable: GROQ_API_KEY");
+    throw new Error("Missing required environment variable: GEMINI_API_KEY");
   }
   return key;
 }
 
-function resolveModelName(model: string): string {
-  const normalized = model.trim();
-  return LEGACY_MODEL_ALIASES[normalized] ?? normalized;
-}
-
 function getDefaultModel(): string {
-  return resolveModelName(process.env.GROQ_MODEL?.trim() || "llama-3.1-8b-instant");
+  return process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
 }
 
-function buildGroqMessages(
+function buildGeminiPrompt(
   userMessage: string,
   mode: ChatMode,
   conversationHistory: AiHistoryMessage[],
-): GroqMessage[] {
-  return [
-    { role: "system", content: buildSystemPrompt(mode) },
-    ...conversationHistory.map((item) => ({
-      role: item.role,
-      content: item.content,
-    })),
-    { role: "user", content: userMessage },
-  ];
+): GeminiPrompt {
+  const contents: GeminiMessage[] = conversationHistory.map((item) => ({
+      role: item.role === "assistant" ? "model" : "user",
+      parts: [{ text: item.content }],
+  }));
+  contents.push({ role: "user", parts: [{ text: userMessage }] });
+
+  return {
+    systemInstruction: { parts: [{ text: buildSystemPrompt(mode) }] },
+    contents,
+  };
+}
+
+function getGeminiEndpoint(model: string, stream: boolean, apiKey: string): string {
+  const action = stream ? "streamGenerateContent" : "generateContent";
+  const query = stream ? "alt=sse&" : "";
+  return `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:${action}?${query}key=${encodeURIComponent(apiKey)}`;
+}
+
+function getText(payload: GeminiResponse): string {
+  return (
+    payload.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text || "")
+      .join("") || ""
+  );
 }
 
 export async function generateAiResponse({
@@ -116,56 +122,48 @@ export async function generateAiResponse({
   maxTokens = 500,
   temperature = 0.4,
 }: GenerateAiResponseParams): Promise<GenerateAiResponseResult> {
-  const apiKey = requireGroqApiKey();
-  const selectedModel = resolveModelName(model?.trim() || getDefaultModel());
-  const messages = buildGroqMessages(userMessage, mode, conversationHistory);
+  const apiKey = requireGeminiApiKey();
+  const selectedModel = model?.trim() || getDefaultModel();
+  const prompt = buildGeminiPrompt(userMessage, mode, conversationHistory);
 
   const startedAt = Date.now();
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const response = await fetch(getGeminiEndpoint(selectedModel, false, apiKey), {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: selectedModel,
-      messages,
-      max_tokens: maxTokens,
-      temperature,
-      stream: false,
-    }),
+      ...prompt,
+      generationConfig: { maxOutputTokens: maxTokens, temperature },
+    } satisfies GeminiRequest),
   });
   const latencyMs = Date.now() - startedAt;
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`Groq API error (${response.status}): ${errorBody}`);
+    throw new Error(`Gemini API error (${response.status}): ${errorBody}`);
   }
 
-  const payload = (await response.json()) as GroqCompletionResponse;
-  const content = payload.choices?.[0]?.message?.content?.trim();
+  const payload = (await response.json()) as GeminiResponse;
+  const content = getText(payload).trim();
 
   if (!content) {
-    throw new Error("Groq returned an empty response.");
+    throw new Error("Gemini returned an empty response.");
   }
 
-  const promptTokens = payload.usage?.prompt_tokens ?? 0;
-  const completionTokens = payload.usage?.completion_tokens ?? 0;
-  const totalTokens = payload.usage?.total_tokens ?? promptTokens + completionTokens;
+  const promptTokens = payload.usageMetadata?.promptTokenCount ?? 0;
+  const completionTokens = payload.usageMetadata?.candidatesTokenCount ?? 0;
+  const totalTokens = payload.usageMetadata?.totalTokenCount ?? promptTokens + completionTokens;
 
   return {
     content,
-    provider: "groq",
-    model: payload.model || selectedModel,
+    provider: "gemini",
+    model: payload.modelVersion || selectedModel,
     promptTokens,
     completionTokens,
     totalTokens,
     latencyMs,
   };
-}
-
-function extractUsage(payload: GroqStreamChunk) {
-  return payload.usage ?? payload.x_groq?.usage;
 }
 
 function parseSseEvents(rawBlock: string): Array<{ event: string; data: string }> {
@@ -198,36 +196,29 @@ export async function* streamAiResponse({
   maxTokens = 500,
   temperature = 0.4,
 }: GenerateAiResponseParams): AsyncGenerator<StreamAiResponseEvent> {
-  const apiKey = requireGroqApiKey();
-  const selectedModel = resolveModelName(model?.trim() || getDefaultModel());
-  const messages = buildGroqMessages(userMessage, mode, conversationHistory);
+  const apiKey = requireGeminiApiKey();
+  const selectedModel = model?.trim() || getDefaultModel();
+  const prompt = buildGeminiPrompt(userMessage, mode, conversationHistory);
 
   const startedAt = Date.now();
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const response = await fetch(getGeminiEndpoint(selectedModel, true, apiKey), {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: selectedModel,
-      messages,
-      max_tokens: maxTokens,
-      temperature,
-      stream: true,
-      stream_options: {
-        include_usage: true,
-      },
-    }),
+      ...prompt,
+      generationConfig: { maxOutputTokens: maxTokens, temperature },
+    } satisfies GeminiRequest),
   });
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`Groq API error (${response.status}): ${errorBody}`);
+    throw new Error(`Gemini API error (${response.status}): ${errorBody}`);
   }
 
   if (!response.body) {
-    throw new Error("Groq API did not return a readable stream.");
+    throw new Error("Gemini API did not return a readable stream.");
   }
 
   const reader = response.body.getReader();
@@ -257,16 +248,16 @@ export async function* streamAiResponse({
           continue;
         }
 
-        let payload: GroqStreamChunk;
+        let payload: GeminiStreamChunk;
         try {
-          payload = JSON.parse(event.data) as GroqStreamChunk;
+          payload = JSON.parse(event.data) as GeminiStreamChunk;
         } catch {
           continue;
         }
 
-        outputModel = payload.model || outputModel;
+        outputModel = payload.modelVersion || outputModel;
 
-        const delta = payload.choices?.[0]?.delta?.content || "";
+        const delta = getText(payload);
         if (delta) {
           content += delta;
           yield {
@@ -275,11 +266,10 @@ export async function* streamAiResponse({
           };
         }
 
-        const usage = extractUsage(payload);
-        if (usage) {
-          promptTokens = usage.prompt_tokens ?? promptTokens;
-          completionTokens = usage.completion_tokens ?? completionTokens;
-          totalTokens = usage.total_tokens ?? totalTokens;
+        if (payload.usageMetadata) {
+          promptTokens = payload.usageMetadata.promptTokenCount ?? promptTokens;
+          completionTokens = payload.usageMetadata.candidatesTokenCount ?? completionTokens;
+          totalTokens = payload.usageMetadata.totalTokenCount ?? totalTokens;
         }
       }
     }
@@ -287,7 +277,7 @@ export async function* streamAiResponse({
 
   const normalized = content.trim();
   if (!normalized) {
-    throw new Error("Groq returned an empty streamed response.");
+    throw new Error("Gemini returned an empty streamed response.");
   }
 
   const latencyMs = Date.now() - startedAt;
@@ -297,7 +287,7 @@ export async function* streamAiResponse({
     type: "done",
     result: {
       content: normalized,
-      provider: "groq",
+      provider: "gemini",
       model: outputModel,
       promptTokens,
       completionTokens,

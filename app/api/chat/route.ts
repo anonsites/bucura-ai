@@ -54,17 +54,17 @@ function isUuid(value: string): boolean {
 function toClientAiErrorMessage(raw: string): string {
   const value = raw.toLowerCase();
 
-  if (value.includes("missing required environment variable: groq_api_key")) {
-    return "Server is missing GROQ_API_KEY. Add it in .env.local and restart the dev server.";
+  if (value.includes("missing required environment variable: gemini_api_key")) {
+    return "Server is missing GEMINI_API_KEY. Add it in .env.local and restart the dev server.";
   }
-  if (value.includes("groq api error (401")) {
-    return "Groq rejected your API key. Check GROQ_API_KEY in .env.local.";
+  if (value.includes("gemini api error (401")) {
+    return "Gemini rejected your API key. Check GEMINI_API_KEY in .env.local.";
   }
-  if (value.includes("groq api error (404")) {
-    return "Selected GROQ_MODEL was not found. Check GROQ_MODEL in .env.local.";
+  if (value.includes("gemini api error (404")) {
+    return "Selected GEMINI_MODEL was not found. Check GEMINI_MODEL in .env.local.";
   }
-  if (value.includes("groq api error (429")) {
-    return "Groq rate limit reached. Try again in a moment.";
+  if (value.includes("gemini api error (429")) {
+    return "Gemini rate limit reached. Try again in a moment.";
   }
   if (value.includes("track_usage_tokens")) {
     return "Database usage tracking function is missing. Run the latest schema.sql in Supabase.";
@@ -76,7 +76,7 @@ function toClientAiErrorMessage(raw: string): string {
     return "Database messages table/policies are not ready. Run the latest schema.sql in Supabase.";
   }
   if (value.includes("empty streamed response")) {
-    return "Groq returned an empty response. Try sending the message again.";
+    return "Gemini returned an empty response. Try sending the message again.";
   }
 
   return "Unable to generate response at this time.";
@@ -104,7 +104,7 @@ function parseChatRequest(body: ChatRequestBody): ParsedChatRequest {
 
   const mode = body.mode && isChatMode(body.mode) ? body.mode : "explanation";
   const model =
-    body.model?.trim() || process.env.GROQ_MODEL?.trim() || "llama-3.1-8b-instant";
+    body.model?.trim() || process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
   const maxTokens = Math.min(Math.max(parseNumber(body.maxTokens, 500), 50), 1200);
   const temperature = Math.min(Math.max(parseNumber(body.temperature, 0.4), 0), 1);
 
@@ -219,10 +219,10 @@ async function persistFailedAssistantResponse({
       role: "assistant",
       content: "I could not generate a response right now. Please try again.",
       mode,
-      provider: "groq",
+      provider: "gemini",
       model,
       status: "error",
-      errorCode: "GROQ_API_ERROR",
+      errorCode: "GEMINI_API_ERROR",
       errorMessage,
     });
   } catch (error) {
@@ -236,10 +236,10 @@ async function persistFailedAssistantResponse({
       supabase,
       userId,
       conversationId: conversation.id,
-      provider: "groq",
+      provider: "gemini",
       model,
       success: false,
-      errorCode: "GROQ_API_ERROR",
+      errorCode: "GEMINI_API_ERROR",
     });
   } catch (error) {
     const details =

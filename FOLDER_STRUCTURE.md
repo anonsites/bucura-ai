@@ -9,7 +9,7 @@ Tech stack:
 * **Next.js (App Router)**
 * **TypeScript**
 * **Supabase**
-* **Groq API**
+* **Google Gemini API**
 * Scalable architecture
 
 ---
@@ -158,7 +158,7 @@ App structure components:
 
 Core logic utilities (IMPORTANT).
 
-* `ai.ts` → Groq integration + model logic
+* `ai.ts` → Gemini integration + model logic
 * `prompts.ts` → Centralized system prompts
 * `supabase.ts` → Supabase client setup
 * `auth.ts` → Auth helpers
@@ -235,7 +235,7 @@ Optional extra styles beyond Tailwind.
 1. AI logic lives ONLY in `lib/ai.ts`
 2. Prompts live ONLY in `lib/prompts.ts`
 3. API routes call services, not database directly
-4. Frontend never talks directly to Groq
+4. Frontend never talks directly to Gemini
 5. Everything is typed
 
 This keeps it scalable.
@@ -246,7 +246,7 @@ This keeps it scalable.
 
 If BUCURA AI grows:
 
-* You can swap Groq for Gemini API easily
+* The AI provider can be replaced without rewriting the application layers
 * You can add subscription logic
 * You can add PDF processing
 * You can move to microservices later

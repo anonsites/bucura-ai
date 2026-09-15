@@ -2,7 +2,7 @@
 # 📘 BUCURA AI – Student-Focused AI Assistant
 
 **Version:** MVP v1
-**Tech Stack:** Next.js + TypeScript + Groq API + Supabase
+**Tech Stack:** Next.js + TypeScript + Google Gemini API + Supabase
 **Goal:** Build a concise, student-focused AI assistant optimized for summaries and multiple-choice precision.
 
 ---
@@ -28,7 +28,7 @@ BUCURA AI is a web-based (to be turned into progressive web app) genarative AI a
 * Real-time AI chat
 * Message history
 * Conversation persistence
-* Streaming responses (if supported by Groq)
+* Streaming responses through Gemini
 
 ---
 
@@ -81,7 +81,7 @@ Users can switch between:
 3. Backend:
 
    * Wraps message in structured system prompt
-   * Sends to Groq API
+      * Sends to Gemini API
    * Applies formatting control
 4. Response stored in database
 5. Response returned to frontend
@@ -97,7 +97,7 @@ API Route (/api/chat)
       ↓
 AI Service Layer (lib/ai.ts)
       ↓
-Groq API
+Google Gemini API
       ↓
 Response Processing Layer
       ↓
@@ -112,13 +112,12 @@ Database (Supabase)
 
 ---
 
-# 7. 🤖 Groq API Integration
+# 7. 🤖 Google Gemini API Integration
 
 ## 7.1 Recommended Models (Initial Research)
 
-* `llama3-8b-8192`
-* `mixtral-8x7b`
-* Other free-tier supported Groq models
+* `gemini-2.5-flash`
+* Other free-tier supported Gemini models
 
 ---
 
@@ -142,16 +141,18 @@ export async function generateResponse({
 }) {
   const systemPrompt = buildSystemPrompt(mode)
 
-  const response = await groq.chat.completions.create({
-    model: "llama3-8b-8192",
-    messages: [
-      { role: "system", content: systemPrompt },
-      ...conversationHistory,
-      { role: "user", content: userMessage }
-    ],
-    max_tokens: 500,
-    temperature: 0.4
-  })
+      const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+            {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        contents: [...conversationHistory, { role: "user", parts: [{ text: userMessage }] }],
+                        generationConfig: { maxOutputTokens: 500, temperature: 0.4 },
+                  }),
+            },
+      )
 
   return formatResponse(response)
 }
@@ -234,7 +235,7 @@ Keep it short and academic.
 
 * Auth
 * Chat UI
-* Groq integration
+* Gemini integration
 * Mode-based prompts
 
 ## Phase 2
