@@ -55,16 +55,16 @@ function toClientAiErrorMessage(raw: string): string {
   const value = raw.toLowerCase();
 
   if (value.includes("missing required environment variable: gemini_api_key")) {
-    return "Server is missing GEMINI_API_KEY. Add it in .env.local and restart the dev server.";
+    return "Server is missing GEMINI_API_KEY.";
   }
   if (value.includes("gemini api error (401")) {
-    return "Gemini rejected your API key. Check GEMINI_API_KEY in .env.local.";
+    return "Gemini rejected your API key.";
   }
   if (value.includes("gemini api error (404")) {
-    return "Selected GEMINI_MODEL was not found. Check GEMINI_MODEL in .env.local.";
+    return "Selected GEMINI_MODEL was not found.";
   }
   if (value.includes("gemini api error (429")) {
-    return "Gemini rate limit reached. Try again in a moment.";
+    return "Gemini rate limit reached.";
   }
   if (value.includes("track_usage_tokens")) {
     return "Database usage tracking function is missing. Run the latest schema.sql in Supabase.";
