@@ -467,8 +467,7 @@ export default function ChatPageClient({
           return {
             ...item,
             status: "error",
-            content:
-              "Sorry! something went wrong. Please check your internet connection and try again.",
+            content: message,
           };
         }),
       );

@@ -60,6 +60,12 @@ function toClientAiErrorMessage(raw: string): string {
   if (value.includes("gemini api error (401")) {
     return "Gemini rejected your API key.";
   }
+  if (value.includes("gemini api error (400")) {
+    return "Gemini rejected the request. Check GEMINI_MODEL and the Gemini request settings.";
+  }
+  if (value.includes("gemini api error (403")) {
+    return "Gemini denied access. Check that the API key is active and Gemini API access is enabled.";
+  }
   if (value.includes("gemini api error (404")) {
     return "Selected GEMINI_MODEL was not found.";
   }
@@ -77,6 +83,9 @@ function toClientAiErrorMessage(raw: string): string {
   }
   if (value.includes("empty streamed response")) {
     return "Gemini returned an empty response. Try sending the message again.";
+  }
+  if (value.includes("gemini api error")) {
+    return "Gemini could not process the request. Check the Gemini API configuration.";
   }
 
   return "Unable to generate response at this time.";
