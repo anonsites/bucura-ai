@@ -7,7 +7,7 @@ import Footer from "@/components/layout/Footer";
 import SignUpModal from "@/components/auth/SignUpModal";
 import LoginModal from "@/components/auth/LoginModal";
 import DevelopersSection from "@/components/home/DevelopersSection";
-import MarqueeAnnouncement from "@/components/home/MarqueeAnnouncement";
+//import MarqueeAnnouncement from "@/components/home/MarqueeAnnouncement";
 
 type HomePageClientProps = {
   initialAuthMode: "login" | "signup" | null;
@@ -23,7 +23,7 @@ export default function HomePageClient({
 
   return (
     <main className="relative flex min-h-screen flex-col overflow-x-hidden bg-slate-400 text-stone-900">
-      <MarqueeAnnouncement />
+      {/* <MarqueeAnnouncement /> */}
       <div className="absolute left-1/2 top-1/2 z-0 h-[640px] w-[320px] -translate-x-1/2 -translate-y-1/2">
         <Image
           src="/images/hero_section.png"
