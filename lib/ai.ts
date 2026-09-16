@@ -12,7 +12,13 @@ type GeminiResponse = {
     content?: {
       parts?: Array<{ text?: string }>;
     };
+    finishReason?: string;
+    finishMessage?: string;
   }>;
+  promptFeedback?: {
+    blockReason?: string;
+    blockReasonMessage?: string;
+  };
   usageMetadata?: {
     promptTokenCount?: number;
     candidatesTokenCount?: number;
@@ -114,6 +120,17 @@ function getText(payload: GeminiResponse): string {
   );
 }
 
+function getEmptyResponseReason(payload: GeminiResponse): string | null {
+  const candidate = payload.candidates?.[0];
+  if (candidate?.finishReason && candidate.finishReason !== "STOP") {
+    return `Gemini returned no text. Finish reason: ${candidate.finishReason}${candidate.finishMessage ? ` (${candidate.finishMessage})` : ""}.`;
+  }
+  if (payload.promptFeedback?.blockReason) {
+    return `Gemini blocked the prompt: ${payload.promptFeedback.blockReason}${payload.promptFeedback.blockReasonMessage ? ` (${payload.promptFeedback.blockReasonMessage})` : ""}.`;
+  }
+  return null;
+}
+
 export async function generateAiResponse({
   userMessage,
   mode,
@@ -148,7 +165,9 @@ export async function generateAiResponse({
   const content = getText(payload).trim();
 
   if (!content) {
-    throw new Error("Gemini returned an empty response.");
+    throw new Error(
+      getEmptyResponseReason(payload) || "Gemini returned an empty response.",
+    );
   }
 
   const promptTokens = payload.usageMetadata?.promptTokenCount ?? 0;
@@ -230,6 +249,7 @@ export async function* streamAiResponse({
   let promptTokens = 0;
   let completionTokens = 0;
   let totalTokens = 0;
+  let lastPayload: GeminiStreamChunk | null = null;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -238,7 +258,7 @@ export async function* streamAiResponse({
     }
 
     buffer += decoder.decode(value, { stream: true });
-    const rawBlocks = buffer.split("\n\n");
+    const rawBlocks = buffer.split(/\r?\n\r?\n/);
     buffer = rawBlocks.pop() ?? "";
 
     for (const rawBlock of rawBlocks) {
@@ -254,6 +274,7 @@ export async function* streamAiResponse({
         } catch {
           continue;
         }
+        lastPayload = payload;
 
         outputModel = payload.modelVersion || outputModel;
 
@@ -275,9 +296,41 @@ export async function* streamAiResponse({
     }
   }
 
+  buffer += decoder.decode();
+  if (buffer.trim()) {
+    for (const event of parseSseEvents(buffer)) {
+      if (event.data === "[DONE]") {
+        continue;
+      }
+
+      let payload: GeminiStreamChunk;
+      try {
+        payload = JSON.parse(event.data) as GeminiStreamChunk;
+      } catch {
+        continue;
+      }
+      lastPayload = payload;
+
+      outputModel = payload.modelVersion || outputModel;
+      const delta = getText(payload);
+      if (delta) {
+        content += delta;
+        yield { type: "delta", content: delta };
+      }
+      if (payload.usageMetadata) {
+        promptTokens = payload.usageMetadata.promptTokenCount ?? promptTokens;
+        completionTokens = payload.usageMetadata.candidatesTokenCount ?? completionTokens;
+        totalTokens = payload.usageMetadata.totalTokenCount ?? totalTokens;
+      }
+    }
+  }
+
   const normalized = content.trim();
   if (!normalized) {
-    throw new Error("Gemini returned an empty streamed response.");
+    throw new Error(
+      getEmptyResponseReason(lastPayload || {}) ||
+        "Gemini returned an empty streamed response. Check the model finish reason or safety settings.",
+    );
   }
 
   const latencyMs = Date.now() - startedAt;

@@ -84,6 +84,9 @@ function toClientAiErrorMessage(raw: string): string {
   if (value.includes("empty streamed response")) {
     return "Gemini returned an empty response. Try sending the message again.";
   }
+  if (value.includes("gemini returned no text")) {
+    return "Gemini did not return text, possibly because the request was blocked by safety settings.";
+  }
   if (value.includes("gemini api error")) {
     return "Gemini could not process the request. Check the Gemini API configuration.";
   }
