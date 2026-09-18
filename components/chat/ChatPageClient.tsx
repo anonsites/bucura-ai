@@ -522,7 +522,7 @@ export default function ChatPageClient({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="sticky bottom-0 z-20 bg-gradient-to-t from-[#f7f7fb] via-[#f7f7fb] to-transparent pb-6 pt-10">
+      <div className="sticky bottom-0 z-20 bg-linear-to-t from-[#f7f7fb] via-[#f7f7fb] to-transparent pb-6 pt-10">
         <div className="mx-auto w-full max-w-3xl px-4">
           <ChatInput
             onSubmit={handleSendMessage}

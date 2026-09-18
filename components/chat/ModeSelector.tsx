@@ -11,7 +11,7 @@ type ModeSelectorProps = {
 };
 
 const MODE_LABELS: Record<ChatMode, string> = {
-  exam: "Quiz",
+  exam: "Choose",
   explanation: "Explain",
   summary: "Summarize",
 };
@@ -22,7 +22,7 @@ export default function ModeSelector({
   disabled = false,
 }: ModeSelectorProps) {
   return (
-    <div className="inline-flex rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-[1px]">
+    <div className="inline-flex rounded-full bg-linear-to-r from-indigo-500 via-purple-500 to-pink-500 p-[1px]">
       <div className="inline-flex rounded-full bg-white p-0.5">
         {CHAT_MODES.map((mode) => (
           <button
@@ -33,7 +33,7 @@ export default function ModeSelector({
             className={cn(
               "rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase transition-all",
               value === mode
-                ? "bg-gradient-to-r from-indigo-500 via-purple-500 text-white shadow-sm"
+                ? "bg-linear-to-r from-indigo-500 via-purple-500 text-white shadow-sm"
                 : "text-stone-600 hover:bg-stone-100",
               disabled && "cursor-not-allowed opacity-60",
             )}
