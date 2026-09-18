@@ -6,7 +6,6 @@ import Modal from "@/components/ui/Modal";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { useEmailVerification } from "@/hooks/useEmailVerification";
 
 interface SignUpModalProps {
   isOpen: boolean;
@@ -25,58 +24,18 @@ export default function SignUpModal({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [signUpStep, setSignUpStep] = useState<"email-verification" | "account-details">("email-verification");
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     password: "",
   });
 
-  // Email verification hook
-  const {
-    email: emailVerificationEmail,
-    setEmail: setEmailVerificationEmail,
-    otp,
-    setOTP,
-    otpSent,
-    verified,
-    isLoading: emailLoading,
-    error: emailError,
-    success: emailSuccess,
-    attemptsLeft,
-    resendCountdown,
-    requestOTP,
-    verifyOTP,
-    resendOTP,
-    resetState: resetEmailVerification,
-  } = useEmailVerification({
-    onSuccess: (verifiedEmail) => {
-      // Move to account details step after successful email verification
-      setFormData((prev) => ({ ...prev, email: verifiedEmail }));
-      setSignUpStep("account-details");
-    },
-  });
-
   useEffect(() => {
     if (isOpen) {
       setErrorMessage(null);
       setSuccessMessage(null);
-      setSignUpStep("email-verification");
-      resetEmailVerification();
     }
-  }, [isOpen, resetEmailVerification]);
-
-  const handleEmailVerificationStep = async () => {
-    if (!otpSent) {
-      // Request OTP
-      setEmailVerificationEmail(emailVerificationEmail);
-      await requestOTP();
-    }
-  };
-
-  const handleVerifyOTP = async () => {
-    await verifyOTP();
-  };
+  }, [isOpen]);
 
   const handleAccountDetailsSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -95,11 +54,6 @@ export default function SignUpModal({
 
     if (password.length < 6) {
       setErrorMessage("Password must be at least 6 characters.");
-      return;
-    }
-
-    if (!verified) {
-      setErrorMessage("Email verification required.");
       return;
     }
 
@@ -125,7 +79,6 @@ export default function SignUpModal({
 
       if (data.session) {
         setFormData({ fullName: "", email: "", password: "" });
-        resetEmailVerification();
         onClose();
         router.push(redirectTo);
         router.refresh();
@@ -137,8 +90,6 @@ export default function SignUpModal({
       );
       setFormData((current) => ({ ...current, password: "" }));
       setTimeout(() => {
-        resetEmailVerification();
-        setSignUpStep("email-verification");
         onClose();
       }, 2000);
     } catch (error) {
@@ -158,115 +109,18 @@ export default function SignUpModal({
           <p className="text-white">Try Bucura AI today</p>
         </div>
 
-        {/* STEP 1: EMAIL VERIFICATION */}
-        {signUpStep === "email-verification" && (
-          <div className="flex flex-col gap-4">
-            {!otpSent ? (
-              // Email request phase
-              <>
-                <div>
-                  <Input
-                    type="email"
-                    placeholder="Email:"
-                    className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-white placeholder-white font-bold focus:border-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
-                    value={emailVerificationEmail}
-                    onChange={(e) => setEmailVerificationEmail(e.target.value)}
-                    disabled={emailLoading}
-                    required
-                  />
-                </div>
-
-                {emailError && <p className="text-sm text-red-400">{emailError}</p>}
-                {emailSuccess && <p className="text-sm text-emerald-400">{emailSuccess}</p>}
-
-                <Button
-                  type="button"
-                  onClick={handleEmailVerificationStep}
-                  disabled={emailLoading || !emailVerificationEmail}
-                  className="mt-2 w-full rounded-xl bg-white py-3 font-bold text-black transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70"
-                >
-                  {emailLoading ? "Sending OTP..." : "Send Verification Code"}
-                </Button>
-              </>
-            ) : !verified ? (
-              // OTP verification phase
-              <>
-                <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-4 mb-4">
-                  <p className="text-sm text-gray-300">
-                    Verification code sent to <span className="font-semibold text-white">{emailVerificationEmail}</span>
-                  </p>
-                </div>
-
-                <div>
-                  <Input
-                    type="text"
-                    placeholder="Enter 6-digit code:"
-                    className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-white placeholder-white font-bold focus:border-white/50 focus:outline-none focus:ring-1 focus:ring-white/50 text-center tracking-widest"
-                    value={otp}
-                    onChange={(e) => setOTP(e.target.value.slice(0, 6))}
-                    maxLength={6}
-                    inputMode="numeric"
-                    disabled={emailLoading}
-                    required
-                  />
-                </div>
-
-                <div className="text-xs text-gray-400">
-                  Attempts remaining: <span className="text-white font-semibold">{attemptsLeft}</span>
-                </div>
-
-                {emailError && <p className="text-sm text-red-400">{emailError}</p>}
-                {emailSuccess && <p className="text-sm text-emerald-400">{emailSuccess}</p>}
-
-                <Button
-                  type="button"
-                  onClick={handleVerifyOTP}
-                  disabled={emailLoading || otp.length !== 6}
-                  className="mt-2 w-full rounded-xl bg-white py-3 font-bold text-black transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70"
-                >
-                  {emailLoading ? "Verifying..." : "Verify Code"}
-                </Button>
-
-                <div className="text-center">
-                  {resendCountdown > 0 ? (
-                    <p className="text-xs text-gray-400">
-                      Resend code in <span className="font-semibold">{resendCountdown}s</span>
-                    </p>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={resendOTP}
-                      disabled={emailLoading}
-                      className="text-xs text-blue-400 hover:underline disabled:opacity-50"
-                    >
-                      Didn't receive code? Resend
-                    </button>
-                  )}
-                </div>
-              </>
-            ) : null}
-
-            <div className="mt-6 text-center text-sm text-white">
-              Already have an account?{" "}
-              <button
-                type="button"
-                onClick={onSwitchToLogin}
-                className="text-blue-400 hover:underline"
-              >
-                Log in
-              </button>
-            </div>
+        <form onSubmit={handleAccountDetailsSubmit} className="flex flex-col gap-4">
+          <div>
+            <Input
+              type="email"
+              placeholder="Email:"
+              className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-white placeholder-white font-bold focus:border-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              disabled={isLoading}
+              required
+            />
           </div>
-        )}
-
-        {/* STEP 2: ACCOUNT DETAILS */}
-        {signUpStep === "account-details" && (
-          <form onSubmit={handleAccountDetailsSubmit} className="flex flex-col gap-4">
-            <div className="rounded-lg border border-gray-700 bg-gray-900/50 p-4 mb-4">
-              <p className="text-sm text-gray-300">
-                Email verified: <span className="font-semibold text-emerald-400">✓ {formData.email}</span>
-              </p>
-            </div>
 
             <div>
               <Input
@@ -303,30 +157,17 @@ export default function SignUpModal({
               {isLoading ? "Creating Account..." : "Create Account"}
             </Button>
 
+          <div className="mt-6 text-center text-sm text-white">
+            Already have an account?{" "}
             <button
               type="button"
-              onClick={() => {
-                resetEmailVerification();
-                setSignUpStep("email-verification");
-              }}
-              disabled={isLoading}
-              className="text-sm text-gray-400 hover:text-white disabled:opacity-50"
+              onClick={onSwitchToLogin}
+              className="text-blue-400 hover:underline"
             >
-              ← Use different email
+              Log in
             </button>
-
-            <div className="mt-6 text-center text-sm text-white">
-              Already have an account?{" "}
-              <button
-                type="button"
-                onClick={onSwitchToLogin}
-                className="text-blue-400 hover:underline"
-              >
-                Log in
-              </button>
-            </div>
-          </form>
-        )}
+          </div>
+        </form>
       </div>
     </Modal>
   );
