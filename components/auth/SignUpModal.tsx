@@ -124,7 +124,7 @@ export default function SignUpModal({
 
             <div>
               <Input
-                placeholder="Username:"
+                placeholder="Name:"
                 className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-white placeholder-white font-bold focus:border-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
                 value={formData.fullName}
                 onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
@@ -136,7 +136,7 @@ export default function SignUpModal({
             <div>
               <Input
                 type="password"
-                placeholder="Password (min 6 characters):"
+                placeholder="Password:"
                 className="w-full rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-white placeholder-white font-bold focus:border-white/50 focus:outline-none focus:ring-1 focus:ring-white/50"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}

@@ -6,7 +6,7 @@ import ActionCard from "@/components/home/ActionsCard";
 import Footer from "@/components/layout/Footer";
 import SignUpModal from "@/components/auth/SignUpModal";
 import LoginModal from "@/components/auth/LoginModal";
-import DevelopersSection from "@/components/home/DevelopersSection";
+//import DevelopersSection from "@/components/home/DevelopersSection";
 //import MarqueeAnnouncement from "@/components/home/MarqueeAnnouncement";
 
 type HomePageClientProps = {
@@ -72,7 +72,7 @@ export default function HomePageClient({
           <ActionCard />
         </div>
       </div>
-      <DevelopersSection onSignUpClick={() => setIsSignUpOpen(true)} />
+      {/* <DevelopersSection onSignUpClick={() => setIsSignUpOpen(true)} /> */}
       <Footer />
       <SignUpModal
         isOpen={isSignUpOpen}
